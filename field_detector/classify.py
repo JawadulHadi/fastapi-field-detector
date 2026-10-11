@@ -1,5 +1,6 @@
 """Stage 3: turn candidates into fields. Rules by default, optional local LLM refinement."""
 import json
+import os
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -61,7 +62,9 @@ class _Verdict(BaseModel):
 class LLMClassifier:
     """Asks a local Ollama model to confirm each candidate. Any failure falls back to rules."""
 
-    def __init__(self, model='llama3.2', host='http://localhost:11434', client=None):
+    def __init__(self, model=None, host=None, client=None):
+        model = model or os.environ.get('OLLAMA_MODEL', 'llama3.2')
+        host = host or os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
         self.model, self.host = model, host.rstrip('/')
         self.client = client or httpx.Client(timeout=60)
         self.fallback = RuleClassifier()

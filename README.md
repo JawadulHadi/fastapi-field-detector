@@ -9,6 +9,45 @@ PDF -> extract words, lines, squares -> candidates (rules) -> classify (rules or
     -> validate (clamp, de-overlap, warn) -> JSON
 ```
 
+## Architecture
+
+```mermaid
+flowchart LR
+    Client["Client<br/>POST /detect?classifier=rules|llm"] --> API
+
+    subgraph API["FastAPI · app.py"]
+        Limits["size ≤ 10 MB → 413<br/>content type → 415"]
+    end
+
+    API --> Pipe
+
+    subgraph Pipe["detect() · pipeline.py"]
+        direction LR
+        Magic["%PDF magic bytes<br/>≤ 50 pages → else 422"] --> Extract
+        Extract["1 · extract_page()<br/>extract.py · PyMuPDF<br/>word segments, ruled lines,<br/>checkbox squares"] --> Cand
+        Cand["2 · generate()<br/>candidates.py<br/>label + line / underscores / colon"] --> Classify
+        Classify["3 · classify()<br/>classify.py"] --> Clean
+        Clean["4 · clean()<br/>validate.py<br/>clamp, drop slivers,<br/>IoU #gt; 0.5 de-overlap, warnings"]
+    end
+
+    subgraph Classifiers["classifier choice"]
+        Rules["RuleClassifier<br/>assign_roles(): named role,<br/>signer_n, nearest signature"]
+        LLMC["LLMClassifier<br/>labels only, never page image"]
+    end
+    Classify --> Rules
+    Classify -.-> LLMC
+    LLMC --> Ollama[("Ollama<br/>localhost:11434")]
+    LLMC -- "any failure" --> Rules
+
+    Clean --> Resp["DetectResponse JSON<br/>fields with normalised boxes,<br/>role_key, confidence, source<br/>+ warnings"]
+
+    subgraph Eval["eval/ (CI gate)"]
+        Samples[("10 synthetic PDFs + JSON labels<br/>make_samples.py")] --> Score["run_eval.py<br/>match on type, page, role, IoU ≥ 0.5"]
+        Score --> Gate{"overall F1 ≥ 0.9?"}
+    end
+    Score -. "calls" .-> Pipe
+```
+
 ## Run
 
 ```bash
@@ -55,6 +94,15 @@ CI fails if overall F1 drops below 0.9.
 
 - PDFs only (magic-byte check), 10 MB, 50 pages. Errors return 413, 415 or 422.
 - No document is stored. The LLM path sends label text only, never the page image.
+
+## Deploy (free)
+
+Hosted on a **Render free web service**, built from the `Dockerfile` (`render.yaml` is the blueprint).
+In Render: New, Blueprint, pick this repo. Health check is `GET /health`.
+
+- Free instances sleep after about 15 minutes idle, so the first request after that is slow.
+- `?classifier=llm` needs a reachable Ollama (`OLLAMA_HOST`). A free host has none, so it falls back to rules.
+- The image was built and smoke-tested locally (`/health`, and `/detect` on a sample PDF).
 
 ## Known limits
 

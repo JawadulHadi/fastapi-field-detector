@@ -1,0 +1,14 @@
+# Render Blueprint: free web service, built from the Dockerfile.
+# Free instances sleep after ~15 minutes idle; the first request after that is slow.
+services:
+  - type: web
+    name: fastapi-field-detector
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # The rule classifier needs nothing. The ?classifier=llm option needs a reachable Ollama,
+      # which a free host does not have, so it falls back to rules unless you point this somewhere.
+      - key: OLLAMA_HOST
+        sync: false
