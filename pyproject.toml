@@ -21,3 +21,7 @@ select = ['E', 'F', 'I', 'B']
 
 [tool.pytest.ini_options]
 pythonpath = ['.']
+
+# Vercel's FastAPI preset looks for app.py or app/main.py; the app lives in a package, so name it.
+[tool.vercel]
+entrypoint = 'field_detector.app:app'

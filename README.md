@@ -97,17 +97,29 @@ CI fails if overall F1 drops below 0.9.
 
 ## Deploy (free)
 
-Hosted on a **Render free web service**, built from the `Dockerfile` (`render.yaml` is the blueprint).
-In Render: New, Blueprint, pick this repo. Health check is `GET /health`.
+Deploys to **Vercel** (Python runtime, FastAPI preset) with no database and no secrets. Import the
+repo in Vercel and deploy; `[tool.vercel]` in `pyproject.toml` points it at `field_detector.app:app`.
+The full guide, including Vercel's 4.5 MB upload limit, is in [docs/deployment.md](docs/deployment.md).
 
-- Free instances sleep after about 15 minutes idle, so the first request after that is slow.
-- `?classifier=llm` needs a reachable Ollama (`OLLAMA_HOST`). A free host has none, so it falls back to rules.
-- The image was built and smoke-tested locally (`/health`, and `/detect` on a sample PDF).
+The Render blueprint (`render.yaml`, built from the `Dockerfile`) is kept as a fallback.
 
 ## Known limits
 
 - Text-based PDFs only. Scanned pages need OCR first (next step: Tesseract or a vision model).
 - Roles come from role words and proximity to signatures. Unusual layouts need the LLM path.
 - One signature box height per type, no handling of rotated pages.
+
+## Changelog and contributing
+
+Every change adds an entry under **Unreleased** in [`CHANGELOG.md`](CHANGELOG.md) and updates the
+docs it affects (this README, `docs/`, and `NOTES.md` for mistakes). A CI job fails any pull request
+that skips the changelog (label it `skip-changelog` for changes that truly need none). Before
+opening a PR:
+
+```bash
+ruff check .
+pytest -q
+python eval/make_samples.py && python -m eval.run_eval
+```
 
 See `NOTES.md` for mistakes made and fixed.

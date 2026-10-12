@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "field_detector/app.py": {
+      "maxDuration": 30,
+      "excludeFiles": "{tests/**,eval/**,docs/**,.github/**,*.md,Dockerfile,render.yaml}"
+    }
+  }
+}
